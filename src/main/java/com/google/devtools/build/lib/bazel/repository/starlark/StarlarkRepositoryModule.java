@@ -263,6 +263,7 @@ public class StarlarkRepositoryModule implements RepositoryModuleApi {
       StarlarkCallable implementation,
       Dict<?, ?> tagClasses, // Dict<String, TagClass>
       String doc,
+      Sequence<?> environ, // <String> expected
       StarlarkThread thread)
       throws EvalException {
     return ModuleExtension.builder()
@@ -271,6 +272,7 @@ public class StarlarkRepositoryModule implements RepositoryModuleApi {
             ImmutableMap.copyOf(Dict.cast(tagClasses, String.class, TagClass.class, "tag_classes")))
         .setDoc(doc)
         .setLocation(thread.getCallerLocation())
+        .setEnvVariables(ImmutableList.copyOf(STRING_LIST.cast(environ)))
         .build();
   }
 

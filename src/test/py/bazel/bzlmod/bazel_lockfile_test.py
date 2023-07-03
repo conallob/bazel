@@ -485,6 +485,86 @@ class BazelLockfileTest(test_base.TestBase):
       lockfile = json.loads(f.read().strip())
       self.assertEqual(len(lockfile['moduleExtensions']), 0)
 
+  def testUpdateEnvVariable(self):
+    # If environ is set up in module extension, it should be re-evaluated if its
+    # value changed
+    self.ScratchFile(
+      'MODULE.bazel',
+      [
+        'lockfile_ext = use_extension("extension.bzl", "lockfile_ext")',
+        'use_repo(lockfile_ext, "hello")',
+      ],
+    )
+    self.ScratchFile('BUILD.bazel')
+    self.ScratchFile(
+      'extension.bzl',
+      [
+        'def _repo_rule_impl(ctx):',
+        '    ctx.file("WORKSPACE")',
+        '    ctx.file("BUILD", "filegroup(name=\\"lala\\")")',
+        'repo_rule = repository_rule(implementation = _repo_rule_impl)',
+        'def _module_ext_impl(ctx):',
+        '    print("Hello from the other side!")',
+        '    repo_rule(name= "hello")',
+        (
+          'lockfile_ext = module_extension('
+          '    implementation = _module_ext_impl, '
+          '    environ = [\"SET_ME\"]'
+          ')'
+        ),
+      ],
+    )
+    _, _, stderr = self.RunBazel(['build', '@hello//:all'],
+          env_add={'SET_ME': 'In the sky'})
+    self.assertIn('Hello from the other side!', ''.join(stderr))
+    _, _, stderr = self.RunBazel(['build', '@hello//:all'],
+          env_add={'SET_ME': 'Down to earth'})
+    self.assertIn('Hello from the other side!', ''.join(stderr))
+
+  def testChangeEnvVariableInErrorMode(self):
+    # If environ is set up in module extension, it should be re-evaluated if its
+    # value changed
+    self.ScratchFile(
+      'MODULE.bazel',
+      [
+        'lockfile_ext = use_extension("extension.bzl", "lockfile_ext")',
+        'use_repo(lockfile_ext, "hello")',
+      ],
+    )
+    self.ScratchFile('BUILD.bazel')
+    self.ScratchFile(
+      'extension.bzl',
+      [
+        'def _repo_rule_impl(ctx):',
+        '    ctx.file("WORKSPACE")',
+        '    ctx.file("BUILD", "filegroup(name=\\"lala\\")")',
+        'repo_rule = repository_rule(implementation = _repo_rule_impl)',
+        'def _module_ext_impl(ctx):',
+        '    print("Hello from the other side!")',
+        '    repo_rule(name= "hello")',
+        (
+          'lockfile_ext = module_extension('
+          '    implementation = _module_ext_impl, '
+          '    environ = [\"SET_ME\"]'
+          ')'
+        ),
+      ],
+    )
+    _, _, stderr = self.RunBazel(['build', '@hello//:all'],
+                                 env_add={'SET_ME': 'In the sky'})
+    exit_code, _, stderr = self.RunBazel(
+      ['build', '--lockfile_mode=error', '@hello//:all'],
+      env_add={'SET_ME': 'Down to earth'},
+      allow_failure=True,
+    )
+    self.AssertExitCode(exit_code, 48, stderr)
+    self.assertIn(
+      (
+        'ERROR: Lock file is no longer up-to-date because: The environment '
+        'variables this extension depends on, or there values have changed'
+      ),
+      stderr,
+    )
 
 if __name__ == '__main__':
   unittest.main()

@@ -124,8 +124,8 @@ public class FakeRepositoryModule implements RepositoryModuleApi {
 
   @Override
   public Object moduleExtension(
-      StarlarkCallable implementation, Dict<?, ?> tagClasses, String doc, StarlarkThread thread)
-      throws EvalException {
+      StarlarkCallable implementation, Dict<?, ?> tagClasses, String doc, Sequence<?> environ,
+      StarlarkThread thread) throws EvalException {
     return new Object();
   }
 

@@ -362,7 +362,8 @@ class BazelLockfileTest(test_base.TestBase):
     )
     _, _, stderr = self.RunBazel(['build', '@hello//:all'])
     self.assertIn('Hello from the other side!', ''.join(stderr))
-    self.RunBazel(['shutdown'])
+    # run again to make sure the resolution value is cached
+    _, _, stderr = self.RunBazel(['build', '@hello//:all'])
 
     # Update extension. Make sure that it is executed and updated in the
     # lockfile without errors (since it's already in the lockfile)

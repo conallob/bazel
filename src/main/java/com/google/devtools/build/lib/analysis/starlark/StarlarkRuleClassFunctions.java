@@ -758,9 +758,13 @@ public class StarlarkRuleClassFunctions implements StarlarkRuleFunctionsApi {
     public Object call(StarlarkThread thread, Tuple args, Dict<String, Object> kwargs)
         throws EvalException, InterruptedException {
       if (!args.isEmpty()) {
-        throw new EvalException("unexpected positional arguments");
+        throw new EvalException("Unexpected positional arguments");
       }
-      BazelStarlarkContext.from(thread).checkLoadingPhase(getName());
+      try {
+        BazelStarlarkContext.from(thread).checkLoadingPhase(getName());
+      }catch (IllegalStateException e) {
+        throw new EvalException("Unable to find BazelStarlarkContext");
+      }
       if (ruleClass == null) {
         throw new EvalException("Invalid rule class hasn't been exported by a bzl file");
       }
